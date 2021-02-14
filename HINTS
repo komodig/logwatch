@@ -1,0 +1,21 @@
+Cron:
+=====
+call by crontab every 5 minutes:
+
+*/1 * * * * root /home/website/logwatch/logwatch.sh
+
+
+iptables:
+=========
+To block 234.*.*.* use 234.0.0.0/255.0.0.0
+and to block 123.212.232.* use 123.212.232.0/255.255.255.0
+
+e.g. iptables -I INPUT -s 30.30.0.0/255.255.0.0 -j DROP
+
+>= Debian 10: /usr/sbin/iptables-legacy
+
+geoip:
+======
+pip install python-geoip-gelite2
+from geoip import geolite2
+loc = geolite2.lookup(<some-ip-address>)
