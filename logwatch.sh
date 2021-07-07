@@ -16,8 +16,8 @@ echo "activating venv..."
 source venv/bin/activate
 
 # Check if Lock File exists, if not create it and set trap on exit
-if { set -C; 2>/dev/null >logwatch.lock; }; then
-        trap "rm -f logwatch.lock" EXIT
+if { set -C; 2>/dev/null >/root/logwatch.lock; }; then
+        trap "rm -f /root/logwatch.lock" EXIT
 else
         logger "+++ logwatch +++ aborting! Lock file exists!"
         exit

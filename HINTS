@@ -1,6 +1,6 @@
 Cron:
 =====
-call by crontab every 5 minutes:
+run by crontab every minute:
 
 */1 * * * * root /home/website/logwatch/logwatch.sh
 
