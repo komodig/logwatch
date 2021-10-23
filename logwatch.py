@@ -33,7 +33,7 @@ def listed_ips(logwatch_list):
 
 
 if __name__ == '__main__':
-    sasl_filter=".*warning:.*\\[.*\\]: SASL [L|l][O|o][G|g][I|i][N|n] authentication failed:.*failure"
+    sasl_filter=".*warning:.*\\[.*\\]: SASL.*authentication failed:.*failure"
 
     parser = ArgumentParser()
     parser.add_argument('-f', '--input-file', default='/var/log/syslog')
