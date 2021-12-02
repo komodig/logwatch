@@ -12,6 +12,11 @@ if [ $UID -ne 0 ] ; then
     exit 0
 fi
 
+if [[ $enable == "False" ]] ; then
+    logger "+++ logwatch +++ abort! (disabled by config file)"
+    exit
+fi
+
 echo "activating venv..."
 source venv/bin/activate
 
