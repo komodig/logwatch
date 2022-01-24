@@ -81,13 +81,13 @@ if [ -e $logwatch_list ] ; then
         echo "# added by logwatch at `date`" >> $tmpfile
         echo "ALL:$ban_ip" >> $tmpfile
 
-        logger "sending api request..."
+        logger "sending api request: $ban_ip"
         curl -iX POST "$api_url" \
         -H "Accept: application/json" \
         -H "Referer: rs-test" \
         -H "Content-Type: application/json" \
         -H "Authorization: Token $api_key" \
-        -d "{'ip': $ban_ip, 'origin': ''}"
+        -d "{\"ip\": \"$ban_ip\", \"origin\": \"\"}"
     done
     if [ -e $tmpfile ] ; then
     	logger "sending info mail..."
