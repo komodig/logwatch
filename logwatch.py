@@ -1,99 +1,76 @@
-from argparse import ArgumentParser
+import sys
 import re
+import yaml
+import requests
+import json
+from syslog import syslog
+from pathlib import Path
 
+logwatch_config = 'config.yaml'
 
-def grep_ips(infile, pattern, ip_dict={}):
+def _grep_hosts(hosts: list, log: str, pattern: str, limit: int) -> list:
+    ip_hits = {}
     err_pattern = re.compile(pattern)
     ip_pattern = re.compile("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
-    with open(infile, 'r') as inf:
+    hosts_found = []
+
+    with open(log, 'r') as inf:
         for line in inf:
             if err_pattern.match(line):
-                hits = ip_pattern.finditer(line)
-                ipaddr = ''
-                for hit in hits:
+                for hit in ip_pattern.finditer(line):
                     ipaddr = hit.group()
                     break    # just 1st ip if there are more in one line
 
-                if ipaddr in ip_dict.keys():
-                    ip_dict[ipaddr] += 1
-                else:
-                    ip_dict[ipaddr] = 1
+                if ipaddr not in hosts and ipaddr not in hosts_found:
+                    if ipaddr in ip_hits.keys():
+                        ip_hits[ipaddr] += 1
+                    else:
+                        ip_hits[ipaddr] = 1
 
-    return ip_dict
+                    if ip_hits[ipaddr] >= limit:
+                        hosts_found.append(ipaddr)
 
+    return hosts_found
 
-def listed_ips(logwatch_list):
-    blocked_ips = {}
-    with open(logwatch_list, 'r') as ipf:
-        for known_ip in ipf:
-            known_ip = known_ip.replace('\n', '')
-            blocked_ips[known_ip] = True
+def _read_config(cfile: str) -> dict:
+    try:
+        with open(cfile, 'r') as lwconf:
+            conf = yaml.safe_load(lwconf)
+    except FileNotFoundError:
+        syslog(f'config not found: {cfile}')
+        sys.exit(1)
 
-    return blocked_ips
+    return conf
 
+def _read_hosts_file(hfile: str) -> list:
+    syslog('reading hosts from file')
+    with open(hfile, 'r') as lwhosts:
+        return json.load(lwhosts)['hosts']
+
+def _write_hosts_file(hfile: str, hosts: list):
+    with open(hfile, 'w') as lwhosts:
+        json.dump({"hosts": hosts}, lwhosts)
+
+def _read_hosts_api(url: str) -> list:
+    syslog('requesting hosts from api')
+    resp = requests.get(url)
+    if not resp.status_code == 200:
+        syslog(f"API request failed: {url}")
+
+    return [host['ip'] for host in json.loads(resp.content)]
 
 if __name__ == '__main__':
-    sasl_filter=".*warning:.*\\[.*\\]: SASL.*authentication failed:.*failure"
+    conf = _read_config(logwatch_config)
+    hosts = None
 
-    parser = ArgumentParser()
-    parser.add_argument('-f', '--input-file', default='/var/log/syslog')
-    parser.add_argument('-s', '--filter-string', default=sasl_filter)
-    parser.add_argument('-l', '--ip-file', default='/tmp/logwatch.lst')
-    parser.add_argument('-n', '--subnets', default='/tmp/subnets.lst')
-    parser.add_argument('-x', '--limit', default='3')
-    parser.add_argument('-d', '--debug', default='True')
+    if Path(conf['hosts-db']).exists():
+        hosts = _read_hosts_file(conf['hosts-db'])
+    else:
+        hosts = _read_hosts_api(conf['api']['url'])
+        _write_hosts_file(conf['hosts-db'], hosts)
 
-    args = parser.parse_args()
-
-    if args.debug == 'True':
-        args.debug = True
-        print('\n:::: using file: \'%s\'' % args.input_file)
-        print(':::: pattern: \'%s\'\n\n' % args.filter_string)
-
-    ips = grep_ips(args.input_file, args.filter_string)
-    try:
-        ips = grep_ips(args.input_file + '.1', args.filter_string, ip_dict=ips)
-    except IOError:
-        pass
-
-    blocked_ips = listed_ips(args.ip_file)
-    with open(args.ip_file, 'a') as fout:
-        for nasty_ip, occurences in ips.items():
-            if args.debug is True:
-                print('%s: %s x %d' % (args.input_file, nasty_ip, occurences))
-            if occurences > int(args.limit) and nasty_ip not in blocked_ips.keys():
-                fout.write(nasty_ip + '\n')
-                blocked_ips[nasty_ip] = True
-
-    # look for nasty subnets
-    logged_ips = {}
-    for new_ip in blocked_ips.keys():
-        subn = re.sub('\.\d{1,3}$', '.0', new_ip)
-        if subn in logged_ips.keys():
-            logged_ips[subn] += 1
-        else:
-            logged_ips[subn] = 1
-
-    # read subnet file to see what subnets are blocked
-    blocked_subnets = {}
-    try:
-        with open(args.subnets, 'r') as fs:
-            for subn in fs:
-                subn = subn.replace('\n', '')
-                blocked_subnets[subn] = 'blocked'
-    except IOError:
-        pass
-
-    if args.debug is True:
-        print('subnets blocked already: %s' % str(blocked_subnets.keys()))
-
-    with open(args.subnets, 'a') as fout:
-        for subn,v in logged_ips.items():
-            if args.debug is True:
-                print('%d ips in subnet: %s' % (v, subn))
-            if v > 3 and subn not in blocked_subnets.keys():
-                if args.debug is True:
-                    print('new subnet to block: %s' % str(subn))
-                fout.write(subn + '\n')
-                blocked_subnets[subn] = 'new'
-
+    for dir in conf['directives']:
+        directive = conf['directives'][dir]
+        hosts_found = _grep_hosts(hosts, **directive)
+        if len(hosts_found):
+            print("directive: " + dir + " found hosts: " + hosts_found)

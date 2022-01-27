@@ -1,0 +1,17 @@
+iptables: "/usr/sbin/iptables-legacy"
+
+# important: hosts file should be located in /tmp
+# to have it deleted in case of reboot to start from scratch
+hosts-db: "/tmp/logwatch-hosts.json"
+
+api:
+  url: "api.url/with/path"
+  key: "very-secret-apikey"
+
+directives:
+  mail-auth:
+    log: "/var/log/mail.log"
+    pattern: ".*warning:.*\\[.*\\]: SASL.*authentication failed:.*failure"
+    limit: 3
+
+
