@@ -3,6 +3,9 @@
 enable="False"
 lock_file="/var/run/logwatch.lock"
 
+# location where you cloned logwatch.git
+WORKSPACE="/root/logwatch"
+
 if [ $UID -ne 0 ] ; then
     echo "sorry - must be root!"
     exit 0
@@ -12,6 +15,8 @@ if [[ $enable == "False" ]] ; then
     logger "+++ logwatch +++ abort! (disabled by config file)"
     exit
 fi
+
+cd $WORKSPACE
 
 logger "activating venv..."
 source venv/bin/activate
