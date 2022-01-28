@@ -88,7 +88,7 @@ def sys_ban_ip(iptables: str, host: str):
 def load_from_iptables(iptables: str) -> list:
     pattern = "REJECT.*all.*icmp-port-unreachable"
     blacklisted = grep_hosts(INPUT_TYPE.IPTABLES, [], iptables, pattern, 1)
-    syslog(str(len(blacklisted)) + 'blacklisted hosts from iptables')
+    syslog(str(len(blacklisted)) + ' blacklisted hosts from iptables')
     return blacklisted
 
 def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
@@ -145,6 +145,6 @@ if __name__ == '__main__':
 
     if len(new_hosts_detected) and conf['notification']['send']:
         with open(conf['notification']['message'], 'w') as nfile:
-            nfile.write(f"LOGWATCH_EMAIL={conf['notification']['email-to']}\n")
-            nfile.write(f"LOGWATCH_HOST={conf['domain']}\n")
-            nfile.write(f"LOGWATCH_MESSAGE=blacklisted: {str(new_hosts_detected)}\n")
+            nfile.write(f"LOGWATCH_EMAIL=\"{conf['notification']['email-to']}\"\n")
+            nfile.write(f"LOGWATCH_HOST=\"{conf['domain']}\"\n")
+            nfile.write(f"LOGWATCH_MESSAGE=\"blacklisted: {str(new_hosts_detected)}\"\n")
