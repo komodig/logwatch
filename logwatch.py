@@ -1,12 +1,14 @@
-import os
 import sys
 import re
 import yaml
 import requests
 import json
 import subprocess
-from syslog import syslog
 from pathlib import Path
+import logging
+import logging.handlers
+
+logger = logging.getLogger(__file__)
 
 logwatch_config = 'config.yaml'
 
@@ -55,13 +57,13 @@ def read_config(cfile: str) -> dict:
         with open(cfile, 'r') as lwconf:
             conf = yaml.safe_load(lwconf)
     except FileNotFoundError:
-        syslog(f'config not found: {cfile}')
+        logger.info(f'config not found: {cfile}')
         sys.exit(1)
 
     return conf
 
 def read_hosts_file(hfile: str) -> list:
-    syslog('reading hosts from file')
+    logger.info('reading hosts from file')
     with open(hfile, 'r') as lwhosts:
         return json.load(lwhosts)['hosts']
 
@@ -70,25 +72,27 @@ def write_hosts_file(hfile: str, hosts: list):
         json.dump({"hosts": hosts}, lwhosts)
 
 def read_hosts_api(url: str) -> list:
-    syslog('requesting hosts from api')
+    logger.info('requesting hosts from api')
     resp = requests.get(url)
     if resp.status_code != 200:
-        syslog(f"API submit failed: {resp.status_code}")
+        logger.info(f"API submit failed: {resp.status_code}")
         return []
 
-    return [host['ip'] for host in json.loads(resp.content)]
+    hosts = [host['ip'] for host in json.loads(resp.content)]
+    logger.info(str(len(hosts)) + " hosts from api")
+    return hosts
 
 def sys_ban_ip(iptables: str, host: str):
-    syslog("insert rule to reject access from: " + host)
+    logger.info("insert rule: reject access: " + host)
     try:
         _ = subprocess.check_output([iptables, '-t', 'filter', '-I', 'INPUT', '-s', host, '-j', 'REJECT'])
     except subprocess.CalledProcessError as grepexc:
-        syslog("subprocess error code: ", grepexc.returncode, grepexc.output)
+        logger.info("subprocess error code: ", grepexc.returncode, grepexc.output)
 
 def load_from_iptables(iptables: str) -> list:
     pattern = "REJECT.*all.*icmp-port-unreachable"
     blacklisted = grep_hosts(INPUT_TYPE.IPTABLES, [], iptables, pattern, 1)
-    syslog(str(len(blacklisted)) + ' blacklisted hosts from iptables')
+    logger.info(str(len(blacklisted)) + ' blacklisted hosts from iptables')
     return blacklisted
 
 def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
@@ -99,13 +103,19 @@ def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
     payload = "{\"ip\": \"%s\", \"origin\": \"\", \"directive\": \"%s/%s\"}" % (attacker, conf['domain'], directive)
     resp = requests.post(conf['api']['url'], data=payload, headers=headers)
     if resp.status_code != 201:
-        syslog(f"API submit failed: {resp.status_code}")
+        logger.info(f"API submit failed: {resp.status_code}")
+
+def setup_logging():
+    logger.setLevel(logging.DEBUG)
+    handler = logging.handlers.SysLogHandler(address = '/dev/log')
+    logger.addHandler(handler)
 
 if __name__ == '__main__':
-    conf = read_config(logwatch_config)
     new_hosts_detected = []
     hosts = None
+    conf = read_config(logwatch_config)
 
+    setup_logging()
     # TEST
     #sys_ban_ip(conf['iptables'], '118.195.145.14')
 
@@ -121,7 +131,7 @@ if __name__ == '__main__':
         if not len(detected_hosts):
             continue
 
-        syslog(f"directive: {dir} detected {len(detected_hosts)} hosts")
+        logger.info(f"directive: {dir} detected {len(detected_hosts)} hosts")
         for attacker in detected_hosts:
             submit_to_blacklistAPI(conf, attacker, dir)
 
@@ -132,10 +142,10 @@ if __name__ == '__main__':
         api_hosts = read_hosts_api(conf['api']['url'])
         hosts += new_hosts_detected
     else:
-        syslog("no suspicious hosts detected")
+        logger.info("no suspicious hosts detected")
 
     if len(api_hosts) > len(hosts):
-        syslog(f"received {len(api_hosts) - len(hosts)} new hosts from api")
+        logger.info(f"received {len(api_hosts) - len(hosts)} new hosts from api")
 
     hosts = api_hosts   # assume all local hosts are found in api hosts anyway
     write_hosts_file(conf['hosts-db'], hosts)
