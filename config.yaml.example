@@ -1,0 +1,41 @@
+# debian 10 (buster)
+iptables: "/usr/sbin/iptables-legacy"
+
+domain: "yourdomain.com"
+
+# important: hosts file should be located in /tmp
+# to have it deleted in case of reboot to start from scratch
+hosts-db: "/tmp/logwatch-hosts.json"
+
+notification:
+  send: False
+  email-to: "webmaster@anydomain.com"
+  email-from: "your-email"
+  password: "very-good-password"
+  smtp-server: "your-mailserver"
+  port: 465
+
+api:
+  url: "https://your-api-server/hosts/"
+  key: "even-better-secret-key"
+
+directives:
+  mail-auth:
+    log: "mail.log"
+    pattern: ".*warning:.*\\[.*\\]: SASL.*authentication failed:.*failure"
+    limit: 3
+
+  mail-recipient:
+    log: "mail.info"
+    pattern: "^.*Recipient address rejected: User unknown in local recipient table.*$"
+    limit: 5
+
+  mail-relay:
+    log: "mail.info"
+    pattern: "^.*Relay access denied;.*$"
+    limit: 3
+
+  ssh-auth:
+    log: "auth.log"
+    pattern: "^.*Failed password for (?!invalid).*$"
+    limit: 3

@@ -4,6 +4,8 @@ import yaml
 import requests
 import json
 import subprocess
+import smtplib
+import ssl
 from syslog import syslog
 from pathlib import Path
 
@@ -30,7 +32,7 @@ def grep_hosts(type_: int, hosts: list, log: str, pattern: str, limit: int) -> l
     ip_hits = {}
     err_pattern = re.compile(pattern)
     ip_pattern = re.compile("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
-    hosts_found = []
+    detected_hosts = []
 
     for line in raw_input_generator(type_, log):
         if err_pattern.match(line):
@@ -38,16 +40,16 @@ def grep_hosts(type_: int, hosts: list, log: str, pattern: str, limit: int) -> l
                 ipaddr = hit.group()
                 break    # just 1st ip if there are more in one line
 
-            if ipaddr not in hosts and ipaddr not in hosts_found:
+            if ipaddr not in hosts and ipaddr not in detected_hosts:
                 if ipaddr in ip_hits.keys():
                     ip_hits[ipaddr] += 1
                 else:
                     ip_hits[ipaddr] = 1
 
                 if ip_hits[ipaddr] >= limit:
-                    hosts_found.append(ipaddr)
+                    detected_hosts.append(ipaddr)
 
-    return hosts_found
+    return detected_hosts
 
 def read_config(cfile: str) -> dict:
     try:
@@ -71,27 +73,55 @@ def write_hosts_file(hfile: str, hosts: list):
 def read_hosts_api(url: str) -> list:
     syslog('requesting hosts from api')
     resp = requests.get(url)
-    if not resp.status_code == 200:
-        syslog(f"API request failed: {url}")
+    if resp.status_code != 200:
+        syslog(f"API submit failed: {resp.status_code}")
+        return []
 
     return [host['ip'] for host in json.loads(resp.content)]
 
 def sys_ban_ip(iptables: str, host: str):
+    syslog("insert rule to reject access from: " + host)
     try:
-        # $iptables -t filter -I INPUT -s $doom_ip -j REJECT
-        output = subprocess.check_output([iptables, '-t', 'filter', '-I', 'INPUT', '-s', host, '-j', 'REJECT'])
+        _ = subprocess.check_output([iptables, '-t', 'filter', '-I', 'INPUT', '-s', host, '-j', 'REJECT'])
     except subprocess.CalledProcessError as grepexc:
         syslog("subprocess error code: ", grepexc.returncode, grepexc.output)
 
+def send_notification(conf, hosts: list):
+    syslog('sending notification email to ' + conf['notification']['email-to'])
+    port = conf['notification']['port'] # 465 for SSL
+    smtp_server = conf['notification']['smtp-server']
+    sender_email = conf['notification']['email-from']
+    receiver_email = conf['notification']['email-to']
+    password = conf['notification']['password']
+    message = f"""\
+    Subject: new blacklisted hosts @ {conf['domain']}
+
+    {str(hosts)}"""
+
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+        server.login(sender_email, password)
+        server.sendmail(sender_email, receiver_email, message)
+
 def load_from_iptables(iptables: str) -> list:
-    pattern=  "REJECT.*all.*icmp-port-unreachable"
+    pattern = "REJECT.*all.*icmp-port-unreachable"
     blacklisted = grep_hosts(INPUT_TYPE.IPTABLES, [], iptables, pattern, 1)
     print('blacklisted hosts from iptables: ' + str(blacklisted))
     return blacklisted
 
+def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
+    headers = {"Content-Type": "application/json",
+               "Accept": "application/json",
+               "charset": "utf-8",
+               "Authorization": "Token " + conf['api']['key']}
+    payload = "{\"ip\": \"%s\", \"origin\": \"\", \"directive\": \"%s/%s\"}" % (attacker, conf['domain'], directive)
+    resp = requests.post(conf['api']['url'], data=payload, headers=headers)
+    if resp.status_code != 200:
+        syslog(f"API submit failed: {resp.status_code}")
+
 if __name__ == '__main__':
     conf = read_config(logwatch_config)
-    hosts_blacklisted = load_from_iptables(conf['iptables'])
+    new_hosts_detected = []
     hosts = None
 
     # TEST
@@ -105,7 +135,29 @@ if __name__ == '__main__':
 
     for dir in conf['directives']:
         directive = conf['directives'][dir]
-        hosts_found = grep_hosts(INPUT_TYPE.LOG, hosts, **directive)
-        if not len(hosts_found):
+        detected_hosts = grep_hosts(INPUT_TYPE.LOG, hosts, **directive)
+        if not len(detected_hosts):
             continue
-        print("directive: " + dir + " found hosts: " + str(hosts_found))
+
+        syslog(f"directive: {dir} detected {len(detected_hosts)} hosts")
+        for attacker in detected_hosts:
+            submit_to_blacklistAPI(conf, attacker, dir)
+
+        new_hosts_detected += detected_hosts
+
+    if len(new_hosts_detected):
+        hosts_blacklisted = load_from_iptables(conf['iptables'])
+        api_hosts = read_hosts_api(conf['api']['url'])
+        hosts += new_hosts_detected
+
+    if len(api_hosts) > len(hosts):
+        syslog(f"received {len(api_hosts) - len(hosts)} new hosts from api")
+
+    hosts = api_hosts   # assume all local hosts are found in api hosts anyway
+
+    for attacker in hosts:
+        if attacker not in hosts_blacklisted:
+            sys_ban_ip(conf['iptables'], attacker)
+
+    if len(new_hosts_detected) and conf['notification']['send']:
+        send_notification(conf, new_hosts_detected)
