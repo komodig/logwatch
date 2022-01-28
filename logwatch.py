@@ -116,7 +116,7 @@ def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
                "Authorization": "Token " + conf['api']['key']}
     payload = "{\"ip\": \"%s\", \"origin\": \"\", \"directive\": \"%s/%s\"}" % (attacker, conf['domain'], directive)
     resp = requests.post(conf['api']['url'], data=payload, headers=headers)
-    if resp.status_code != 200:
+    if resp.status_code != 201:
         syslog(f"API submit failed: {resp.status_code}")
 
 if __name__ == '__main__':

@@ -21,21 +21,21 @@ api:
 
 directives:
   mail-auth:
-    log: "mail.log"
+    log: "/var/log/mail.log"
     pattern: ".*warning:.*\\[.*\\]: SASL.*authentication failed:.*failure"
     limit: 3
 
   mail-recipient:
-    log: "mail.info"
+    log: "/var/log/mail.info"
     pattern: "^.*Recipient address rejected: User unknown in local recipient table.*$"
     limit: 5
 
   mail-relay:
-    log: "mail.info"
+    log: "/var/log/mail.info"
     pattern: "^.*Relay access denied;.*$"
     limit: 3
 
   ssh-auth:
-    log: "auth.log"
+    log: "/var/log/auth.log"
     pattern: "^.*Failed password for (?!invalid).*$"
     limit: 3
