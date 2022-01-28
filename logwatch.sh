@@ -13,7 +13,7 @@ if [[ $enable == "False" ]] ; then
     exit
 fi
 
-echo "activating venv..."
+logger "activating venv..."
 source venv/bin/activate
 
 # Check if Lock File exists, if not create it and set trap on exit
@@ -24,7 +24,8 @@ else
         exit
 fi
 
+logger "running logwatch"
 python logwatch.py
 
-echo "shutting down venv"
+logger "shutting down venv"
 deactivate
