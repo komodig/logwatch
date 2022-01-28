@@ -60,11 +60,13 @@ def read_config(cfile: str) -> dict:
     return conf
 
 def read_hosts_file(hfile: str) -> list:
-    syslog.syslog(syslog.LOG_INFO, 'reading hosts from file: ' + hfile)
     with open(hfile, 'r') as lwhosts:
-        return json.load(lwhosts)['hosts']
+        hosts = json.load(lwhosts)['hosts']
+        syslog.syslog(syslog.LOG_INFO, f'read {str(len(hosts))} hosts from file: {hfile}')
+        return hosts
 
 def write_hosts_file(hfile: str, hosts: list):
+    syslog.syslog(syslog.LOG_INFO, f"saving {str(len(hosts))} hosts")
     with open(hfile, 'w') as lwhosts:
         json.dump({"hosts": hosts}, lwhosts)
 
@@ -132,6 +134,7 @@ if __name__ == '__main__':
         new_hosts_detected += detected_hosts
 
     if len(new_hosts_detected):
+        # use the event for updating...
         api_hosts = read_hosts_api(conf['api']['url'])
         hosts += new_hosts_detected
     else:
@@ -139,8 +142,9 @@ if __name__ == '__main__':
         api_hosts = []
 
     if len(api_hosts) > len(hosts):
-        syslog.syslog(syslog.LOG_INFO, f"received {len(api_hosts) - len(hosts)} new hosts from api")
-        hosts = api_hosts   # assume all local hosts are found in api hosts anyway
+        syslog.syslog(syslog.LOG_INFO, f"received {str(len(api_hosts) - len(hosts))} new hosts from api")
+        syslog.syslog(syslog.LOG_INFO, f"hosts {str(len(hosts))} <- {str(len(api_hosts))} api_hosts")
+        hosts += [ ah for ah in api_hosts if ah not in hosts ]
         write_hosts_file(conf['hosts-db'], hosts)
 
     for attacker in hosts:
