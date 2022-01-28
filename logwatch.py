@@ -138,6 +138,7 @@ if __name__ == '__main__':
         syslog(f"received {len(api_hosts) - len(hosts)} new hosts from api")
 
     hosts = api_hosts   # assume all local hosts are found in api hosts anyway
+    write_hosts_file(conf['hosts-db'], hosts)
 
     for attacker in hosts:
         if attacker not in hosts_blacklisted:
