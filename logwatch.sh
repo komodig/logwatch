@@ -1,6 +1,7 @@
 #!/bin/bash
 
-enable="False"
+enable="True"
+
 lock_file="/var/run/logwatch.lock"
 
 # location where you cloned logwatch.git
