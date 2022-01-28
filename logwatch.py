@@ -149,6 +149,8 @@ if __name__ == '__main__':
         hosts_blacklisted = load_from_iptables(conf['iptables'])
         api_hosts = read_hosts_api(conf['api']['url'])
         hosts += new_hosts_detected
+    else:
+        syslog("no attackers detected")
 
     if len(api_hosts) > len(hosts):
         syslog(f"received {len(api_hosts) - len(hosts)} new hosts from api")
