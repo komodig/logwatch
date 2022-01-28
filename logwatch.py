@@ -1,11 +1,10 @@
+import os
 import sys
 import re
 import yaml
 import requests
 import json
 import subprocess
-import smtplib
-import ssl
 from syslog import syslog
 from pathlib import Path
 
@@ -86,23 +85,6 @@ def sys_ban_ip(iptables: str, host: str):
     except subprocess.CalledProcessError as grepexc:
         syslog("subprocess error code: ", grepexc.returncode, grepexc.output)
 
-def send_notification(conf, hosts: list):
-    syslog('sending notification email to ' + conf['notification']['email-to'])
-    port = conf['notification']['port'] # 465 for SSL
-    smtp_server = conf['notification']['smtp-server']
-    sender_email = conf['notification']['email-from']
-    receiver_email = conf['notification']['email-to']
-    password = conf['notification']['password']
-    message = f"""\
-    Subject: new blacklisted hosts @ {conf['domain']}
-
-    {str(hosts)}"""
-
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message)
-
 def load_from_iptables(iptables: str) -> list:
     pattern = "REJECT.*all.*icmp-port-unreachable"
     blacklisted = grep_hosts(INPUT_TYPE.IPTABLES, [], iptables, pattern, 1)
@@ -162,4 +144,10 @@ if __name__ == '__main__':
             sys_ban_ip(conf['iptables'], attacker)
 
     if len(new_hosts_detected) and conf['notification']['send']:
-        send_notification(conf, new_hosts_detected)
+        os.environ['LOGWATCH_MESSAGE'] = conf['notification']['message']
+        os.environ['LOGWATCH_EMAIL'] = conf['notification']['email-to']
+        os.environ['LOGWATCH_HOST'] = conf['domain']
+
+        with open(conf['notification']['message'], 'w') as nfile:
+            nfile.write("new detected ip addresses:\n\n")
+            nfile.write(str(new_hosts_detected) + "\n")

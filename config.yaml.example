@@ -9,11 +9,8 @@ hosts-db: "/tmp/logwatch-hosts.json"
 
 notification:
   send: False
-  email-to: "webmaster@anydomain.com"
-  email-from: "your-email"
-  password: "very-good-password"
-  smtp-server: "your-mailserver"
-  port: 465
+  message: '/tmp/notification'
+  email-to: 'info@someprovider.com'
 
 api:
   url: "https://your-api-server/hosts/"

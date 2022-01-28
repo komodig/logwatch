@@ -27,5 +27,10 @@ fi
 logger "running logwatch"
 python logwatch.py
 
+if [ -e $LOGWATCH_MESSAGE ] ; then
+  logger "sending notification email"
+  cat $LOGWATCH_MESSAGE | mail -s "logwatch reports: new blacklisted clients @ $LOGWATCH_HOST" $LOGWATCH_EMAIL
+  rm $LOGWATCH_MESSAGE
+
 logger "shutting down venv"
 deactivate
