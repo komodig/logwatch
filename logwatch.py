@@ -119,7 +119,6 @@ if __name__ == '__main__':
         hosts = read_hosts_file(conf['hosts-db'])
     else:
         hosts = read_hosts_api(conf['api']['url'])
-        write_hosts_file(conf['hosts-db'], hosts)
 
     for dir in conf['directives']:
         directive = conf['directives'][dir]
@@ -133,23 +132,23 @@ if __name__ == '__main__':
 
         new_hosts_detected += detected_hosts
 
+    hosts += [ nh for nh in new_hosts_detected if nh not in hosts ]
+
     if len(new_hosts_detected):
-        # use the event for updating...
+        # just use the event to check updates from API
         api_hosts = read_hosts_api(conf['api']['url'])
-        hosts += new_hosts_detected
+        new_api_hosts = [ ah for ah in api_hosts if ah not in hosts ]
+        syslog.syslog(syslog.LOG_INFO, f"received {str(len(new_api_hosts))} from api")
+        hosts += new_api_hosts
     else:
         syslog.syslog(syslog.LOG_INFO, "no suspicious hosts detected")
         api_hosts = []
 
-    if len(api_hosts) > len(hosts):
-        syslog.syslog(syslog.LOG_INFO, f"received {str(len(api_hosts) - len(hosts))} new hosts from api")
-        syslog.syslog(syslog.LOG_INFO, f"hosts {str(len(hosts))} <- {str(len(api_hosts))} api_hosts")
-        hosts += [ ah for ah in api_hosts if ah not in hosts ]
-        write_hosts_file(conf['hosts-db'], hosts)
-
     for attacker in hosts:
         if attacker not in hosts_blacklisted:
             sys_ban_ip(conf['iptables'], attacker)
+
+    write_hosts_file(conf['hosts-db'], hosts)
 
     # TODO send mail with python (the following workaround prepares sendmail by shell)
     message = '/tmp/notification'  # hardcoded in shell script!
