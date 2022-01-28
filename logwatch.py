@@ -88,7 +88,7 @@ def sys_ban_ip(iptables: str, host: str):
 def load_from_iptables(iptables: str) -> list:
     pattern = "REJECT.*all.*icmp-port-unreachable"
     blacklisted = grep_hosts(INPUT_TYPE.IPTABLES, [], iptables, pattern, 1)
-    print('blacklisted hosts from iptables: ' + str(blacklisted))
+    syslog(str(len(blacklisted)) + 'blacklisted hosts from iptables')
     return blacklisted
 
 def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
@@ -132,7 +132,7 @@ if __name__ == '__main__':
         api_hosts = read_hosts_api(conf['api']['url'])
         hosts += new_hosts_detected
     else:
-        syslog("no attackers detected")
+        syslog("no suspicious hosts detected")
 
     if len(api_hosts) > len(hosts):
         syslog(f"received {len(api_hosts) - len(hosts)} new hosts from api")
@@ -144,10 +144,7 @@ if __name__ == '__main__':
             sys_ban_ip(conf['iptables'], attacker)
 
     if len(new_hosts_detected) and conf['notification']['send']:
-        os.environ['LOGWATCH_MESSAGE'] = conf['notification']['message']
-        os.environ['LOGWATCH_EMAIL'] = conf['notification']['email-to']
-        os.environ['LOGWATCH_HOST'] = conf['domain']
-
         with open(conf['notification']['message'], 'w') as nfile:
-            nfile.write("new detected ip addresses:\n\n")
-            nfile.write(str(new_hosts_detected) + "\n")
+            nfile.write(f"LOGWATCH_EMAIL={conf['notification']['email-to']}\n")
+            nfile.write(f"LOGWATCH_HOST={conf['domain']}\n")
+            nfile.write(f"LOGWATCH_MESSAGE=blacklisted: {str(new_hosts_detected)}\n")
