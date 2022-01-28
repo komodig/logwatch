@@ -60,7 +60,7 @@ def read_config(cfile: str) -> dict:
     return conf
 
 def read_hosts_file(hfile: str) -> list:
-    syslog.syslog(syslog.LOG_INFO, 'reading hosts from file')
+    syslog.syslog(syslog.LOG_INFO, 'reading hosts from file: ' + hfile)
     with open(hfile, 'r') as lwhosts:
         return json.load(lwhosts)['hosts']
 
@@ -114,7 +114,6 @@ if __name__ == '__main__':
     #sys_ban_ip(conf['iptables'], '118.195.145.14')
 
     if Path(conf['hosts-db']).exists():
-        syslog.syslog(syslog.LOG_INFO, 'found local hosts: ' + conf['hosts-db'])
         hosts = read_hosts_file(conf['hosts-db'])
     else:
         hosts = read_hosts_api(conf['api']['url'])
