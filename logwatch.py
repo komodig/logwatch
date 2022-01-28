@@ -144,8 +144,10 @@ if __name__ == '__main__':
         if attacker not in hosts_blacklisted:
             sys_ban_ip(conf['iptables'], attacker)
 
+    # TODO send mail with python (the following workaround prepares sendmail by shell)
+    message = '/tmp/notification'  # hardcoded in shell script!
     if len(new_hosts_detected) and conf['notification']['send']:
-        with open(conf['notification']['message'], 'w') as nfile:
+        with open(message, 'w') as nfile:
             nfile.write(f"LOGWATCH_EMAIL=\"{conf['notification']['email-to']}\"\n")
             nfile.write(f"LOGWATCH_HOST=\"{conf['domain']}\"\n")
             nfile.write(f"LOGWATCH_MESSAGE=\"blacklisted: {str(new_hosts_detected)}\"\n")

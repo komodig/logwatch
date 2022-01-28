@@ -9,7 +9,6 @@ hosts-db: "/tmp/logwatch-hosts.json"
 
 notification:
   send: False
-  message: '/tmp/notification'
   email-to: 'info@someprovider.com'
 
 api:
