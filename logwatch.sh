@@ -34,6 +34,7 @@ if [ -e $LOGWATCH_NOTIFICATION ] ; then
   logger "sending notification email to $LOGWATCH_EMAIL"
   echo "$LOGWATCH_MESSAGE" | mail -s "logwatch reports: new blacklisted clients @ $LOGWATCH_HOST" $LOGWATCH_EMAIL
   rm $LOGWATCH_NOTIFICATION
+fi
 
 logger "shutting down venv"
 deactivate
