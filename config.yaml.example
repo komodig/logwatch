@@ -33,5 +33,5 @@ directives:
 
   ssh-auth:
     log: "/var/log/auth.log"
-    pattern: "^.*Failed password for (?!invalid).*$"
+    pattern: "^.*Failed\ password\ for\ (root|invalid).*$"
     limit: 3
