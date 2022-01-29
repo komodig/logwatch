@@ -1,6 +1,6 @@
 #!/bin/bash
 
-enable="True"
+enable="False"
 
 lock_file="/var/run/logwatch.lock"
 
