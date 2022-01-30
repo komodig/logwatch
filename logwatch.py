@@ -13,12 +13,12 @@ class INPUT_TYPE:
     LOG = 0
     IPTABLES = 1
 
-def raw_input_generator(type_: int, arg: str):
+def raw_input_generator(type_: int, path: str):
     if type_ == INPUT_TYPE.LOG:
-        for line in open(arg, 'r'):
+        for line in open(path, 'r'):
             yield line
     elif type_ == INPUT_TYPE.IPTABLES:
-        output = subprocess.check_output([arg, '-L', '-n'])
+        output = subprocess.check_output([path, '-L', '-n'])
         for line in output.splitlines():
             yield line.decode('ascii')
     else:
