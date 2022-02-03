@@ -103,6 +103,9 @@ def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
     resp = requests.post(conf['api']['url'], data=payload, headers=headers)
     if resp.status_code != 201:
         syslog.syslog(syslog.LOG_INFO, f"API submit failed: {resp.status_code} : {attacker}")
+    else:
+        syslog.syslog(syslog.LOG_INFO, f"API submit successful: {attacker}")
+
 
 if __name__ == '__main__':
     syslog.openlog(ident='logwatch', facility=syslog.LOG_LOCAL1)
