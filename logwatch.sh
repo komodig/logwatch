@@ -12,7 +12,7 @@ if [ $UID -ne 0 ] ; then
     exit 0
 fi
 
-if [[ $enable == "False" ]] ; then
+if [[ $enable != "True" ]] ; then
     logger "+++ logwatch +++ abort! (disabled by config file)"
     exit
 fi
