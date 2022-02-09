@@ -1,5 +1,5 @@
 # debian 10 (buster)
-iptables: "/usr/sbin/iptables-legacy"
+iptables: "/usr/sbin/iptables-nft"
 
 domain: "yourdomain.com"
 
