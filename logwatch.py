@@ -81,7 +81,11 @@ def read_hosts_api(url: str) -> list:
     syslog.syslog(syslog.LOG_INFO, str(len(hosts)) + " hosts from api")
     return hosts
 
-def sys_ban_ip(iptables: str, host: str):
+def sys_ban_ip(iptables: str, host: str, conf: dict):
+    if host in conf['whitelist']:
+        syslog.syslog(syslog.LOG_INFO, f"skip rule: {host} in whitelist")
+        return
+
     syslog.syslog(syslog.LOG_INFO, "insert rule: reject access: " + host)
     try:
         _ = subprocess.check_output([iptables, '-t', 'filter', '-I', 'INPUT', '-s', host, '-j', 'REJECT'])
@@ -95,6 +99,10 @@ def load_from_iptables(iptables: str) -> list:
     return blacklisted
 
 def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
+    if attacker in conf['whitelist']:
+        syslog.syslog(syslog.LOG_INFO, f"API submit canelled: {attacker} in whitelist")
+        return
+
     headers = {"Content-Type": "application/json",
                "Accept": "application/json",
                "charset": "utf-8",
@@ -149,7 +157,7 @@ if __name__ == '__main__':
 
     for attacker in hosts:
         if attacker not in hosts_blacklisted:
-            sys_ban_ip(conf['iptables'], attacker)
+            sys_ban_ip(conf['iptables'], attacker, conf)
 
     write_hosts_file(conf['hosts-db'], hosts)
 

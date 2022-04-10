@@ -3,6 +3,9 @@ iptables: "/usr/sbin/iptables-nft"
 
 domain: "yourdomain.com"
 
+whitetlist:
+    - <your-ip-addr>
+
 # important: hosts file should be located in /tmp
 # to have it deleted in case of reboot to start from scratch
 hosts-db: "/tmp/logwatch-hosts.json"
