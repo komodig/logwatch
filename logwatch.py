@@ -9,9 +9,11 @@ import syslog
 
 logwatch_config = 'config.yaml'
 
+
 class INPUT_TYPE:
     LOG = 0
     IPTABLES = 1
+
 
 def raw_input_generator(type_: int, path: str):
     if type_ == INPUT_TYPE.LOG:
@@ -26,6 +28,8 @@ def raw_input_generator(type_: int, path: str):
 
 # parameter log is used to pass logfile-name or file path in case of iptables
 # i.e. to parse log-files or iptables-rules
+
+
 def grep_hosts(type_: int, hosts: list, log: str, pattern: str, limit: int) -> list:
     ip_hits = {}
     err_pattern = re.compile(pattern)
@@ -49,6 +53,7 @@ def grep_hosts(type_: int, hosts: list, log: str, pattern: str, limit: int) -> l
 
     return detected_hosts
 
+
 def read_config(cfile: str) -> dict:
     try:
         with open(cfile, 'r') as lwconf:
@@ -59,16 +64,19 @@ def read_config(cfile: str) -> dict:
 
     return conf
 
+
 def read_hosts_file(hfile: str) -> list:
     with open(hfile, 'r') as lwhosts:
         hosts = json.load(lwhosts)['hosts']
         syslog.syslog(syslog.LOG_INFO, f'read {str(len(hosts))} hosts from file: {hfile}')
         return hosts
 
+
 def write_hosts_file(hfile: str, hosts: list):
     syslog.syslog(syslog.LOG_INFO, f"saving {str(len(hosts))} hosts")
     with open(hfile, 'w') as lwhosts:
         json.dump({"hosts": hosts}, lwhosts)
+
 
 def read_hosts_api(url: str) -> list:
     syslog.syslog(syslog.LOG_INFO, 'requesting hosts from api')
@@ -81,6 +89,7 @@ def read_hosts_api(url: str) -> list:
     syslog.syslog(syslog.LOG_INFO, str(len(hosts)) + " hosts from api")
     return hosts
 
+
 def sys_ban_ip(iptables: str, host: str, conf: dict):
     if host in conf['whitelist']:
         syslog.syslog(syslog.LOG_INFO, f"skip rule: {host} in whitelist")
@@ -92,11 +101,13 @@ def sys_ban_ip(iptables: str, host: str, conf: dict):
     except subprocess.CalledProcessError as grepexc:
         syslog.syslog(syslog.LOG_INFO, "subprocess error code: ", grepexc.returncode, grepexc.output)
 
+
 def load_from_iptables(iptables: str) -> list:
     pattern = "REJECT.*all.*icmp-port-unreachable"
     blacklisted = grep_hosts(INPUT_TYPE.IPTABLES, [], iptables, pattern, 1)
     syslog.syslog(syslog.LOG_INFO, str(len(blacklisted)) + ' blacklisted in iptables')
     return blacklisted
+
 
 def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
     if attacker in conf['whitelist']:
