@@ -133,6 +133,7 @@ if __name__ == '__main__':
     hosts = None
     conf = read_config(logwatch_config)
     hosts_blacklisted = load_from_iptables(conf['iptables'])
+    api_hosts = read_hosts_api(conf['api']['url'])
 
     # TEST
     #sys_ban_ip(conf['iptables'], '118.195.145.14')
@@ -140,11 +141,11 @@ if __name__ == '__main__':
     if Path(conf['hosts-db']).exists():
         hosts = read_hosts_file(conf['hosts-db'])
     else:
-        hosts = read_hosts_api(conf['api']['url'])
+        hosts = api_hosts
 
     for dir in conf['directives']:
         directive = conf['directives'][dir]
-        detected_hosts = grep_hosts(INPUT_TYPE.LOG, hosts, **directive)
+        detected_hosts = grep_hosts(INPUT_TYPE.LOG, api_hosts, **directive)
         if not len(detected_hosts):
             continue
 
@@ -158,7 +159,6 @@ if __name__ == '__main__':
 
     if len(new_hosts_detected):
         # just use the event to check updates from API
-        api_hosts = read_hosts_api(conf['api']['url'])
         new_api_hosts = [ ah for ah in api_hosts if ah not in hosts ]
         syslog.syslog(syslog.LOG_INFO, f"received {str(len(new_api_hosts))} from api")
         hosts += new_api_hosts
