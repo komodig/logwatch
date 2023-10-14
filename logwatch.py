@@ -86,16 +86,18 @@ def read_hosts_api(url: str) -> list:
     return hosts
 
 
-def sys_ban_ip(iptables: str, host: str, conf: dict):
+def sys_ban_ip(iptables: str, host: str, conf: dict) -> bool:
     if host in conf['whitelist']:
         syslog.syslog(syslog.LOG_INFO, f'skip rule: {host} in whitelist')
         return
 
-    syslog.syslog(syslog.LOG_INFO, 'insert rule: reject access: ' + host)
     try:
         _ = subprocess.check_output([iptables, '-t', 'filter', '-I', 'INPUT', '-s', host, '-j', 'REJECT'])
     except subprocess.CalledProcessError as grepexc:
         syslog.syslog(syslog.LOG_INFO, 'subprocess error code: ', grepexc.returncode, grepexc.output)
+        return False
+    else:
+        return True
 
 
 def load_from_iptables(iptables: str) -> list:
@@ -122,6 +124,24 @@ def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
         syslog.syslog(syslog.LOG_INFO, f'API submit successful: {attacker}')
 
 
+def update_firewall(hosts: list, hosts_blacklisted: list, conf: dict):
+    count = 0
+    failed = 0
+    for attacker in hosts:
+        if attacker not in hosts_blacklisted:
+            if sys_ban_ip(conf['iptables'], attacker, conf) != True:
+                failed += 1
+
+            count += 1
+            if count <= 10:
+                syslog.syslog(syslog.LOG_INFO, f'insert rule: reject access: {attacker}')
+            elif count % 200 == 0:
+                syslog.syslog(syslog.LOG_INFO, f'{count}...')
+
+    if count > 0:
+        syslog.syslog(syslog.LOG_INFO, f'{count} rules: reject access ({failed} errors)')
+
+
 if __name__ == '__main__':
     syslog.openlog(ident='logwatch', facility=syslog.LOG_LOCAL1)
 
@@ -131,16 +151,14 @@ if __name__ == '__main__':
     hosts_blacklisted = load_from_iptables(conf['iptables'])
     api_hosts = read_hosts_api(conf['api']['url'])
 
-    # TEST
-    #sys_ban_ip(conf['iptables'], '118.195.145.14')
-
     if Path(conf['hosts-db']).exists():
         hosts = read_hosts_file(conf['hosts-db'])
         new_api_hosts = [ah for ah in api_hosts if ah not in hosts]
-        syslog.syslog(syslog.LOG_INFO, f'received {str(len(new_api_hosts))} new hosts from api')
-        hosts += new_api_hosts
+        if len(new_api_hosts):
+            syslog.syslog(syslog.LOG_INFO, f'received {str(len(new_api_hosts))} new hosts from api')
+            hosts += new_api_hosts
     else:
-        syslog.syslog(syslog.LOG_INFO, f'no hosts file! Received all {str(len(api_hosts))} hosts from api')
+        syslog.syslog(syslog.LOG_INFO, f'no hosts file - apply all {str(len(api_hosts))} hosts from api')
         hosts = api_hosts
 
     for dir in conf['directives']:
@@ -158,9 +176,7 @@ if __name__ == '__main__':
 
     hosts += [nh for nh in new_hosts_detected if nh not in hosts]
 
-    for attacker in hosts:
-        if attacker not in hosts_blacklisted:
-            sys_ban_ip(conf['iptables'], attacker, conf)
+    update_firewall(hosts, hosts_blacklisted, conf)
 
     write_hosts_file(conf['hosts-db'], hosts)
 
