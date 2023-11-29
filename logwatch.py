@@ -81,7 +81,7 @@ def read_hosts_api(url: str) -> list:
         syslog.syslog(syslog.LOG_INFO, f'API retrieve failed: {resp.status_code}')
         return []
 
-    hosts = [host['ip'] for host in json.loads(resp.content)['results']]
+    hosts = [host['ip'] for host in json.loads(resp.content)]
     syslog.syslog(syslog.LOG_INFO, str(len(hosts)) + ' hosts from api')
     return hosts
 
