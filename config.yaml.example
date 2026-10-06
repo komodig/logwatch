@@ -3,7 +3,7 @@ iptables: "/usr/sbin/iptables-nft"
 
 domain: "yourdomain.com"
 
-whitetlist:
+whitelist:
     - <your-ip-addr>
 
 # important: hosts file should be located in /tmp
