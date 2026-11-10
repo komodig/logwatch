@@ -211,5 +211,5 @@ if __name__ == '__main__':
         else:
             with open(new_hosts_file, 'w') as nfile:
                 nfile.write(json.dumps(new_hosts_detected))
-                syslog.syslog(syslog.LOG_INFO, f'write notification hosts file: {line}')
+                syslog.syslog(syslog.LOG_INFO, f'write notification hosts file: {new_hosts_detected}')
 
