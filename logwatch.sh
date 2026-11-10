@@ -31,7 +31,7 @@ else
 fi
 
 logger "running logwatch"
-python logwatch.py
+python logwatch.py $1
 
 LOGWATCH_NOTIFICATION="/tmp/notification"
 
