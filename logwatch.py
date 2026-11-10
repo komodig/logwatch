@@ -68,10 +68,10 @@ def read_hosts_file(hfile: str) -> list:
         return hosts
 
 
-def write_hosts_file(hfile: str, hosts: list):
+def write_hosts_file(hfile: str, hosts: set):
     syslog.syslog(syslog.LOG_INFO, f'saving {str(len(hosts))} hosts')
     with open(hfile, 'w') as lwhosts:
-        json.dump({"hosts": hosts}, lwhosts)
+        json.dump({"hosts": [h for h in hosts]}, lwhosts)
 
 
 def read_hosts_api(url: str) -> list:
@@ -124,7 +124,7 @@ def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
         syslog.syslog(syslog.LOG_INFO, f'API submit successful: {attacker}')
 
 
-def update_firewall(hosts: list, hosts_blacklisted: list, conf: dict):
+def update_firewall(hosts: set, hosts_blacklisted: list, conf: dict):
     count = 0
     failed = 0
     for attacker in hosts:
@@ -174,11 +174,12 @@ if __name__ == '__main__':
 
         new_hosts_detected += detected_hosts
 
-    hosts += [nh for nh in new_hosts_detected if nh not in hosts]
+    hosts += set(new_hosts_detected)
+    all_hosts = set(hosts)
 
-    update_firewall(hosts, hosts_blacklisted, conf)
+    update_firewall(all_hosts, hosts_blacklisted, conf)
 
-    write_hosts_file(conf['hosts-db'], hosts)
+    write_hosts_file(conf['hosts-db'], all_hosts)
 
     # TODO send mail with python (the following workaround prepares sendmail by shell)
     message = '/tmp/notification'  # hardcoded in shell script!
