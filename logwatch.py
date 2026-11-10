@@ -193,9 +193,9 @@ if __name__ == '__main__':
 
         new_hosts_file = '/tmp/notification_hosts.json'
         try:
-            with open(new_hosts_file, 'r') as nfile:
-                line = json.loads(nfile.read())
-                syslog.syslog(syslog.LOG_INFO, f'read notification hosts file: {line}')
+            for json_line in open(new_hosts_file, 'r'):
+                line = json.loads(json_line)
+                syslog.syslog(syslog.LOG_INFO, f'read notification hosts line: {line}')
                 new_hosts_detected += line
         except FileNotFoundError:
             pass
