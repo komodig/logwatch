@@ -5,6 +5,7 @@ enable="False"
 lock_file="/var/run/logwatch.lock"
 
 # location where you cloned logwatch.git
+
 WORKSPACE="/root/logwatch"
 
 if [ $UID -ne 0 ] ; then
@@ -19,7 +20,6 @@ fi
 
 cd $WORKSPACE
 
-logger "activating venv..."
 source venv/bin/activate
 
 # Check if Lock File exists, if not create it and set trap on exit
@@ -42,5 +42,4 @@ if [ -e $LOGWATCH_NOTIFICATION ] ; then
   rm $LOGWATCH_NOTIFICATION
 fi
 
-logger "shutting down venv"
-deactivate
+deactivate # venv
