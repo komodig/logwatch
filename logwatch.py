@@ -1,3 +1,4 @@
+import argparse
 import sys
 import re
 import yaml
@@ -145,6 +146,10 @@ def update_firewall(hosts: set, hosts_blacklisted: list, conf: dict):
 if __name__ == '__main__':
     syslog.openlog(ident='logwatch', facility=syslog.LOG_LOCAL1)
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--sendmail", action="store_true")
+    args = parser.parse_args()
+
     new_hosts_detected = []
     hosts = None
     conf = read_config(logwatch_config)
@@ -181,10 +186,30 @@ if __name__ == '__main__':
 
     write_hosts_file(conf['hosts-db'], all_hosts)
 
-    # TODO send mail with python (the following workaround prepares sendmail by shell)
-    message = '/tmp/notification'  # hardcoded in shell script!
-    if len(new_hosts_detected) and conf['notification']['send']:
-        with open(message, 'w') as nfile:
-            nfile.write(f"LOGWATCH_EMAIL=\"{conf['notification']['email-to']}\"\n")
-            nfile.write(f"LOGWATCH_HOST=\"{conf['domain']}\"\n")
-            nfile.write(f"LOGWATCH_MESSAGE=\"blacklisted: {str(new_hosts_detected)}\"\n")
+    if len(new_hosts_detected):
+        if not conf['notification']['send']:
+            syslog.syslog(syslog.LOG_INFO, f'not sending notification e-mail (disabled)')
+            sys.exit()
+
+        new_hosts_file = '/tmp/notification_hosts.json'
+        try:
+            with open(new_hosts_file, 'r') as nfile:
+                line = json.loads(nfile.read())
+                syslog.syslog(syslog.LOG_INFO, f'read notification hosts file: {line}')
+                new_hosts_detected += line
+        except FileNotFoundError:
+            pass
+
+        new_hosts_detected = list(set(new_hosts_detected))
+        if args.sendmail:
+            syslog.syslog(syslog.LOG_INFO, f'sending notification hosts')
+            message_file = '/tmp/notification'  # hardcoded in shell script!
+            with open(message_file, 'w') as nfile:
+                nfile.write(f"LOGWATCH_EMAIL=\"{conf['notification']['email-to']}\"\n")
+                nfile.write(f"LOGWATCH_HOST=\"{conf['domain']}\"\n")
+                nfile.write(f"LOGWATCH_MESSAGE=\"blacklisted: {str(new_hosts_detected)}\"\n")
+        else:
+            with open(new_hosts_file, 'w') as nfile:
+                nfile.write(json.dumps(new_hosts_detected))
+                syslog.syslog(syslog.LOG_INFO, f'write notification hosts file: {line}')
+
