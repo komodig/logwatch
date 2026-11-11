@@ -109,6 +109,10 @@ def load_from_iptables(iptables: str) -> list:
 
 
 def submit_to_blacklistAPI(conf: dict, attacker: str, directive: str):
+    if not conf['api']['push']:
+        syslog.syslog(syslog.LOG_INFO, f'API submit disabled by config')
+        return
+
     if attacker in conf['whitelist']:
         syslog.syslog(syslog.LOG_INFO, f'API submit canelled: {attacker} in whitelist')
         return
@@ -191,7 +195,7 @@ if __name__ == '__main__':
             syslog.syslog(syslog.LOG_INFO, f'not sending notification e-mail (disabled)')
             sys.exit()
 
-        new_hosts_file = '/tmp/notification_hosts.json'
+        new_hosts_file = '/tmp/notification_hosts.json' # hardcoded in shell script!
         try:
             for json_line in open(new_hosts_file, 'r'):
                 line = json.loads(json_line)

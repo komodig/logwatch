@@ -15,6 +15,7 @@ notification:
   email-to: 'info@someprovider.com'
 
 api:
+  push: False
   url: "https://your-api-server/hosts/"
   key: "even-better-secret-key"
 

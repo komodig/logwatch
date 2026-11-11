@@ -34,12 +34,14 @@ logger "running logwatch"
 python logwatch.py $1
 
 LOGWATCH_NOTIFICATION="/tmp/notification"
+LOGWATCH_NOTIFICATION_HOSTS='/tmp/notification_hosts.json'
 
 if [ -e $LOGWATCH_NOTIFICATION ] ; then
   . $LOGWATCH_NOTIFICATION
   logger "sending notification email to $LOGWATCH_EMAIL"
   echo "$LOGWATCH_MESSAGE" | mail -s "logwatch reports: new blacklisted clients @ $LOGWATCH_HOST" $LOGWATCH_EMAIL
   rm $LOGWATCH_NOTIFICATION
+  rm $LOGWATCH_NOTIFICATION_HOSTS
 fi
 
 deactivate # venv
