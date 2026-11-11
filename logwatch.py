@@ -77,7 +77,12 @@ def write_hosts_file(hfile: str, hosts: set):
 
 def read_hosts_api(url: str) -> list:
     syslog.syslog(syslog.LOG_INFO, 'requesting hosts from api')
-    resp = requests.get(url)
+    try:
+        resp = requests.get(url)
+    except requests.exceptions.ConnectionError:
+        syslog.syslog(syslog.LOG_INFO, f'API url failed: {url}')
+        return []
+
     if resp.status_code != 200:
         syslog.syslog(syslog.LOG_INFO, f'API retrieve failed: {resp.status_code}')
         return []
