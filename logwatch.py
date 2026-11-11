@@ -34,7 +34,7 @@ def raw_input_generator(type_: int, path: str):
 def grep_hosts(type_: int, hosts: list, log: str, pattern: str, limit: int) -> list:
     ip_hits = {}
     err_pattern = re.compile(pattern)
-    ip_pattern = re.compile('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}')
+    ip_pattern = re.compile(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}')
 
     for line in raw_input_generator(type_, log):
         if err_pattern.match(line):
