@@ -195,19 +195,19 @@ if __name__ == '__main__':
 
     write_hosts_file(conf['hosts-db'], all_hosts)
 
+    new_hosts_file = '/tmp/notification_hosts.json'  # hardcoded in shell script!
+    try:
+        for json_line in open(new_hosts_file, 'r'):
+            line = json.loads(json_line)
+            syslog.syslog(syslog.LOG_INFO, f'read notification hosts: {line}')
+            new_hosts_detected += line
+    except FileNotFoundError:
+        pass
+
     if len(new_hosts_detected):
         if not conf['notification']['send']:
             syslog.syslog(syslog.LOG_INFO, f'not sending notification e-mail (disabled)')
             sys.exit()
-
-        new_hosts_file = '/tmp/notification_hosts.json' # hardcoded in shell script!
-        try:
-            for json_line in open(new_hosts_file, 'r'):
-                line = json.loads(json_line)
-                syslog.syslog(syslog.LOG_INFO, f'read notification hosts line: {line}')
-                new_hosts_detected += line
-        except FileNotFoundError:
-            pass
 
         new_hosts_detected = list(set(new_hosts_detected))
         if args.sendmail:
